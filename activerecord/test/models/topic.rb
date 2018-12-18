@@ -24,7 +24,7 @@ class Topic < ActiveRecord::Base
   end
 
   scope "approved_as_string", -> { where(approved: true) }
-  scope :anonymous_extension, -> {} do
+  scope :anonymous_extension, -> { } do
     def one
       1
     end
@@ -136,6 +136,10 @@ class BlankTopic < Topic
   def blank?
     true
   end
+end
+
+class TitlePrimaryKeyTopic < Topic
+  self.primary_key = :title
 end
 
 module Web

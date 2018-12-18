@@ -88,7 +88,7 @@ task default: :test
 
     PASSTHROUGH_OPTIONS = [
       :skip_active_record, :skip_active_storage, :skip_action_mailer, :skip_javascript, :skip_action_cable, :skip_sprockets, :database,
-      :javascript, :skip_yarn, :api, :quiet, :pretend, :skip
+      :api, :quiet, :pretend, :skip
     ]
 
     def generate_test_dummy(force = false)
@@ -98,6 +98,7 @@ task default: :test
       opts[:skip_listen] = true
       opts[:skip_git] = true
       opts[:skip_turbolinks] = true
+      opts[:skip_webpack_install] = true
       opts[:dummy_app] = true
 
       invoke Rails::Generators::AppGenerator,
@@ -113,7 +114,7 @@ task default: :test
     end
 
     def test_dummy_assets
-      template "rails/javascripts.js",    "#{dummy_path}/app/assets/javascripts/application.js", force: true
+      template "rails/javascripts.js",    "#{dummy_path}/app/javascript/packs/application.js", force: true
       template "rails/stylesheets.css",   "#{dummy_path}/app/assets/stylesheets/application.css", force: true
       template "rails/dummy_manifest.js", "#{dummy_path}/app/assets/config/manifest.js", force: true
     end

@@ -18,6 +18,7 @@ require "models/job"
 require "models/subscriber"
 require "models/subscription"
 require "models/book"
+require "models/citation"
 require "models/developer"
 require "models/computer"
 require "models/project"
@@ -28,6 +29,18 @@ require "models/categorization"
 require "models/sponsor"
 require "models/mentor"
 require "models/contract"
+
+class EagerLoadingTooManyIdsTest < ActiveRecord::TestCase
+  fixtures :citations
+
+  def test_preloading_too_many_ids
+    assert_equal Citation.count, Citation.preload(:reference_of).to_a.size
+  end
+
+  def test_eager_loading_too_may_ids
+    assert_equal Citation.count, Citation.eager_load(:citations).offset(0).size
+  end
+end
 
 class EagerAssociationTest < ActiveRecord::TestCase
   fixtures :posts, :comments, :authors, :essays, :author_addresses, :categories, :categories_posts,
@@ -1333,7 +1346,7 @@ class EagerAssociationTest < ActiveRecord::TestCase
   def test_joins_with_includes_should_preload_via_joins
     post = assert_queries(1) { Post.includes(:comments).joins(:comments).order("posts.id desc").to_a.first }
 
-    assert_queries(0) do
+    assert_no_queries do
       assert_not_equal 0, post.comments.to_a.count
     end
   end
@@ -1571,8 +1584,9 @@ class EagerAssociationTest < ActiveRecord::TestCase
 
   # CollectionProxy#reader is expensive, so the preloader avoids calling it.
   test "preloading has_many_through association avoids calling association.reader" do
-    ActiveRecord::Associations::HasManyAssociation.any_instance.expects(:reader).never
-    Author.preload(:readonly_comments).first!
+    assert_not_called_on_instance_of(ActiveRecord::Associations::HasManyAssociation, :reader) do
+      Author.preload(:readonly_comments).first!
+    end
   end
 
   test "preloading through a polymorphic association doesn't require the association to exist" do

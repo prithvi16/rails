@@ -262,6 +262,16 @@ class NumericalityValidationTest < ActiveModel::TestCase
     Person.clear_validators!
   end
 
+  def test_validates_numericality_using_value_before_type_cast_if_possible
+    Topic.validates_numericality_of :price
+
+    topic = Topic.new(price: 50)
+
+    assert_equal "$50.00", topic.price
+    assert_equal 50, topic.price_before_type_cast
+    assert_predicate topic, :valid?
+  end
+
   def test_validates_numericality_with_exponent_number
     base = 10_000_000_000_000_000
     Topic.validates_numericality_of :approved, less_than_or_equal_to: base
@@ -277,6 +287,13 @@ class NumericalityValidationTest < ActiveModel::TestCase
     assert_raise(ArgumentError) { Topic.validates_numericality_of :approved, greater_than: "foo" }
     assert_raise(ArgumentError) { Topic.validates_numericality_of :approved, less_than: "foo" }
     assert_raise(ArgumentError) { Topic.validates_numericality_of :approved, equal_to: "foo" }
+  end
+
+  def test_validates_numericality_equality_for_float_and_big_decimal
+    Topic.validates_numericality_of :approved, equal_to: BigDecimal("65.6")
+
+    invalid!([Float("65.5"), BigDecimal("65.7")], "must be equal to 65.6")
+    valid!([Float("65.6"), BigDecimal("65.6")])
   end
 
   private

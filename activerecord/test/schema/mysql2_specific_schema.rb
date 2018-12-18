@@ -14,6 +14,16 @@ ActiveRecord::Schema.define do
     end
   end
 
+  create_table :defaults, force: true do |t|
+    t.date :fixed_date, default: "2004-01-01"
+    t.datetime :fixed_time, default: "2004-01-01 00:00:00"
+    t.column :char1, "char(1)", default: "Y"
+    t.string :char2, limit: 50, default: "a varchar field"
+    if supports_default_expression?
+      t.binary :uuid, limit: 36, default: -> { "(uuid())" }
+    end
+  end
+
   create_table :binary_fields, force: true do |t|
     t.binary :var_binary, limit: 255
     t.binary :var_binary_large, limit: 4095
@@ -29,7 +39,7 @@ ActiveRecord::Schema.define do
     t.index :var_binary
   end
 
-  create_table :key_tests, force: true, options: "ENGINE=MyISAM" do |t|
+  create_table :key_tests, force: true do |t|
     t.string :awesome
     t.string :pizza
     t.string :snacks
@@ -39,38 +49,30 @@ ActiveRecord::Schema.define do
   end
 
   create_table :collation_tests, id: false, force: true do |t|
-    t.string :string_cs_column, limit: 1, collation: "utf8_bin"
-    t.string :string_ci_column, limit: 1, collation: "utf8_general_ci"
+    t.string :string_cs_column, limit: 1, collation: "utf8mb4_bin"
+    t.string :string_ci_column, limit: 1, collation: "utf8mb4_general_ci"
     t.binary :binary_column,    limit: 1
   end
 
-  ActiveRecord::Base.connection.execute <<-SQL
-DROP PROCEDURE IF EXISTS ten;
-SQL
+  create_table :enum_tests, id: false, force: true do |t|
+    t.column :enum_column, "ENUM('text','blob','tiny','medium','long','unsigned','bigint')"
+  end
 
-  ActiveRecord::Base.connection.execute <<-SQL
-CREATE PROCEDURE ten() SQL SECURITY INVOKER
-BEGIN
-	select 10;
-END
-SQL
+  execute "DROP PROCEDURE IF EXISTS ten"
 
-  ActiveRecord::Base.connection.execute <<-SQL
-DROP PROCEDURE IF EXISTS topics;
-SQL
+  execute <<~SQL
+    CREATE PROCEDURE ten() SQL SECURITY INVOKER
+    BEGIN
+      SELECT 10;
+    END
+  SQL
 
-  ActiveRecord::Base.connection.execute <<-SQL
-CREATE PROCEDURE topics(IN num INT) SQL SECURITY INVOKER
-BEGIN
-  select * from topics limit num;
-END
-SQL
+  execute "DROP PROCEDURE IF EXISTS topics"
 
-  ActiveRecord::Base.connection.drop_table "enum_tests", if_exists: true
-
-  ActiveRecord::Base.connection.execute <<-SQL
-CREATE TABLE enum_tests (
-  enum_column ENUM('text','blob','tiny','medium','long','unsigned','bigint')
-)
-SQL
+  execute <<~SQL
+    CREATE PROCEDURE topics(IN num INT) SQL SECURITY INVOKER
+    BEGIN
+      SELECT * FROM topics LIMIT num;
+    END
+  SQL
 end

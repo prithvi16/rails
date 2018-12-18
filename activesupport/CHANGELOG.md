@@ -1,3 +1,98 @@
+*   If the same block is `included` multiple times for a Concern, an exception is no longer raised.
+
+    *Mark J. Titorenko*, *Vlad Bokov*
+
+*   Fix bug where `#to_options` for `ActiveSupport::HashWithIndifferentAccess`
+    would not act as alias for `#symbolize_keys`.
+
+    *Nick Weiland*
+
+*   Improve the logic that detects non-autoloaded constants.
+
+    *Jan Habermann*, *Xavier Noria*
+
+*   Deprecate `ActiveSupport::Multibyte::Unicode#pack_graphemes(array)` and `ActiveSuppport::Multibyte::Unicode#unpack_graphemes(string)`
+    in favor of `array.flatten.pack("U*")` and `string.scan(/\X/).map(&:codepoints)`, respectively.
+
+    *Francesco Rodríguez*
+
+*   Deprecate `ActiveSupport::Multibyte::Chars.consumes?` in favor of `String#is_utf8?`.
+
+    *Francesco Rodríguez*
+
+*   Fix duration being rounded to a full second.
+    ```
+      time = DateTime.parse("2018-1-1")
+      time += 0.51.seconds
+    ```
+    Will now correctly add 0.51 second and not 1 full second.
+
+    *Edouard Chin*
+
+*   Deprecate `ActiveSupport::Multibyte::Unicode#normalize` and `ActiveSuppport::Multibyte::Chars#normalize`
+    in favor of `String#unicode_normalize`
+
+    *Francesco Rodríguez*
+
+*   Deprecate `ActiveSupport::Multibyte::Unicode#downcase/upcase/swapcase` in favor of
+    `String#downcase/upcase/swapcase`.
+
+    *Francesco Rodríguez*
+
+*   Add `ActiveSupport::ParameterFilter`.
+
+    *Yoshiyuki Kinjo*
+
+*   Rename `Module#parent`, `Module#parents`, and `Module#parent_name` to
+    `module_parent`, `module_parents`, and `module_parent_name`.
+
+    *Gannon McGibbon*
+
+*   Deprecate the use of `LoggerSilence` in favor of `ActiveSupport::LoggerSilence`
+
+    *Edouard Chin*
+
+*   Deprecate using negative limits in `String#first` and `String#last`.
+
+    *Gannon McGibbon*, *Eric Turner*
+
+*   Fix bug where `#without` for `ActiveSupport::HashWithIndifferentAccess` would fail
+    with symbol arguments
+
+    *Abraham Chan*
+
+*   Treat `#delete_prefix`, `#delete_suffix` and `#unicode_normalize` results as non-`html_safe`.
+    Ensure safety of arguments for `#insert`, `#[]=` and `#replace` calls on `html_safe` Strings.
+
+    *Janosch Müller*
+
+*   Changed `ActiveSupport::TaggedLogging.new` to return a new logger instance instead
+    of mutating the one received as parameter.
+
+    *Thierry Joyal*
+
+*   Define `unfreeze_time` as an alias of `travel_back` in `ActiveSupport::Testing::TimeHelpers`.
+
+    The alias is provided for symmetry with `freeze_time`.
+
+    *Ryan Davidson*
+
+*   Add support for tracing constant autoloads. Just throw
+
+        ActiveSupport::Dependencies.logger = Rails.logger
+        ActiveSupport::Dependencies.verbose = true
+
+    in an initializer.
+
+    *Xavier Noria*
+
+*   Maintain `html_safe?` on html_safe strings when sliced.
+
+        string = "<div>test</div>".html_safe
+        string[-1..1].html_safe? # => true
+
+    *Elom Gomez*, *Yumin Wong*
+
 *   Add `Array#extract!`.
 
     The method removes and returns the elements for which the block returns a true value.
@@ -50,7 +145,7 @@
 
     *Aaron "t.lo" Patterson*
 
-*   Add cpu_time, idle_time, and allocations to Event
+*   Add cpu_time, idle_time, and allocations to Event.
 
     *Eileen M. Uchitelle*, *Aaron Patterson*
 
@@ -64,7 +159,7 @@
 
     *Jason Lee*
 
-*   Allow Range#=== and Range#cover? on Range
+*   Allow `Range#===` and `Range#cover?` on Range.
 
     `Range#cover?` can now accept a range argument like `Range#include?` and
     `Range#===`. `Range#===` works correctly on Ruby 2.6. `Range#include?` is moved

@@ -9,15 +9,12 @@ gemspec
 # We need a newish Rake since Active Job sets its test tasks' descriptions.
 gem "rake", ">= 11.1"
 
-gem "mocha"
-
 gem "capybara", ">= 2.15"
 
 gem "rack-cache", "~> 1.2"
-gem "coffee-rails"
 gem "sass-rails"
 gem "turbolinks", "~> 5"
-
+gem "webpacker", github: "rails/webpacker", require: ENV["SKIP_REQUIRE_WEBPACKER"] != "true"
 # require: false so bcrypt is loaded only when has_secure_password is used.
 # This is to avoid Active Model (and by extension the entire framework)
 # being dependent on a binary library.
@@ -47,7 +44,6 @@ gem "dalli"
 gem "listen", ">= 3.0.5", "< 3.2", require: false
 gem "libxml-ruby", platforms: :ruby
 gem "connection_pool", require: false
-gem "i18n", "~> 1.0.1"
 
 # for railties app_generator_test
 gem "bootsnap", ">= 1.1.0", require: false
@@ -90,7 +86,6 @@ group :storage do
   gem "azure-storage", require: false
 
   gem "image_processing", "~> 1.2"
-  gem "ffi", "<= 1.9.21"
 end
 
 group :ujs do
@@ -104,12 +99,11 @@ instance_eval File.read local_gemfile if File.exist? local_gemfile
 
 group :test do
   gem "minitest-bisect"
+  gem "minitest-retry"
 
   platforms :mri do
     gem "stackprof"
     gem "byebug"
-    # FIXME: Remove this when thor 0.21 is release
-    gem "thor", git: "https://github.com/erikhuda/thor.git", ref: "006832ea32480618791f89bb7d9e67b22fc814b9"
   end
 
   gem "benchmark-ips"

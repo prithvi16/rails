@@ -58,6 +58,8 @@ amazon:
   service: S3
   access_key_id: ""
   secret_access_key: ""
+  bucket: ""
+  region: "" # e.g. 'us-east-1'
 ```
 
 Tell Active Storage which service to use by setting
@@ -78,6 +80,14 @@ To use the Amazon S3 service in production, you add the following to
 ```ruby
 # Store files on Amazon S3.
 config.active_storage.service = :amazon
+```
+
+To use the test service when testing, you add the following to
+`config/environments/test.rb`:
+
+```ruby
+# Store uploaded files on the local file system in a temporary directory.
+config.active_storage.service = :test
 ```
 
 Continue reading for more information on the built-in service adapters (e.g.
@@ -625,7 +635,7 @@ input.addEventListener('change', (event) => {
   input.value = null
 })
 
-const uploadFile = (file) {
+const uploadFile = (file) => {
   // your form needs the file_field direct_upload: true, which
   //  provides data-direct-upload-url
   const url = input.dataset.directUploadUrl
@@ -732,16 +742,22 @@ during the test are complete and you won't receive an error from Active Storage
 saying it can't find a file.
 
 ```ruby
+module RemoveUploadedFiles
+  def after_teardown
+    super
+    remove_uploaded_files
+  end
+
+  private
+
+  def remove_uploaded_files
+    FileUtils.rm_rf(Rails.root.join('tmp', 'storage'))
+  end
+end
+
 module ActionDispatch
   class IntegrationTest
-    def remove_uploaded_files
-      FileUtils.rm_rf(Rails.root.join('tmp', 'storage'))
-    end
-
-    def after_teardown
-      super
-      remove_uploaded_files
-    end
+    prepend RemoveUploadedFiles
   end
 end
 ```

@@ -461,7 +461,7 @@ module ActionMailer
 
     helper ActionMailer::MailHelper
 
-    class_attribute :delivery_job, default: ::ActionMailer::DeliveryJob
+    class_attribute :delivery_job, default: ::ActionMailer::MailDeliveryJob
     class_attribute :default_params, default: {
       mime_version: "1.0",
       charset:      "UTF-8",
@@ -588,15 +588,16 @@ module ActionMailer
     private
 
       def set_payload_for_mail(payload, mail)
-        payload[:mailer]     = name
-        payload[:message_id] = mail.message_id
-        payload[:subject]    = mail.subject
-        payload[:to]         = mail.to
-        payload[:from]       = mail.from
-        payload[:bcc]        = mail.bcc if mail.bcc.present?
-        payload[:cc]         = mail.cc  if mail.cc.present?
-        payload[:date]       = mail.date
-        payload[:mail]       = mail.encoded
+        payload[:mailer]             = name
+        payload[:message_id]         = mail.message_id
+        payload[:subject]            = mail.subject
+        payload[:to]                 = mail.to
+        payload[:from]               = mail.from
+        payload[:bcc]                = mail.bcc if mail.bcc.present?
+        payload[:cc]                 = mail.cc  if mail.cc.present?
+        payload[:date]               = mail.date
+        payload[:mail]               = mail.encoded
+        payload[:perform_deliveries] = mail.perform_deliveries
       end
 
       def method_missing(method_name, *args)
@@ -940,14 +941,19 @@ module ActionMailer
 
       def collect_responses(headers)
         if block_given?
-          collector = ActionMailer::Collector.new(lookup_context) { render(action_name) }
-          yield(collector)
-          collector.responses
+          collect_responses_from_block(headers, &Proc.new)
         elsif headers[:body]
           collect_responses_from_text(headers)
         else
           collect_responses_from_templates(headers)
         end
+      end
+
+      def collect_responses_from_block(headers)
+        templates_name = headers[:template_name] || action_name
+        collector = ActionMailer::Collector.new(lookup_context) { render(templates_name) }
+        yield(collector)
+        collector.responses
       end
 
       def collect_responses_from_text(headers)
@@ -1007,7 +1013,7 @@ module ActionMailer
       end
 
       def instrument_name
-        "action_mailer".freeze
+        "action_mailer"
       end
 
       ActiveSupport.run_load_hooks(:action_mailer, self)

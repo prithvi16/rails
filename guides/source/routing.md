@@ -543,6 +543,8 @@ resources :photos do
 end
 ```
 
+NOTE: If you're defining additional resource routes with a symbol as the first positional argument, be mindful that it is not equivalent to using a string. Symbols infer controller actions while strings infer paths.
+
 #### Adding Routes for Additional New Actions
 
 To add an alternate new action using the `:on` shortcut:
@@ -719,12 +721,12 @@ NOTE: There is an exception for the `format` constraint: while it's a method on 
 
 ### Advanced Constraints
 
-If you have a more advanced constraint, you can provide an object that responds to `matches?` that Rails should use. Let's say you wanted to route all users on a blacklist to the `BlacklistController`. You could do:
+If you have a more advanced constraint, you can provide an object that responds to `matches?` that Rails should use. Let's say you wanted to route all users on a restricted list to the `RestrictedListController`. You could do:
 
 ```ruby
-class BlacklistConstraint
+class RestrictedListConstraint
   def initialize
-    @ips = Blacklist.retrieve_ips
+    @ips = RestrictedList.retrieve_ips
   end
 
   def matches?(request)
@@ -733,8 +735,8 @@ class BlacklistConstraint
 end
 
 Rails.application.routes.draw do
-  get '*path', to: 'blacklist#index',
-    constraints: BlacklistConstraint.new
+  get '*path', to: 'restricted_list#index',
+    constraints: RestrictedListConstraint.new
 end
 ```
 
@@ -742,8 +744,8 @@ You can also specify constraints as a lambda:
 
 ```ruby
 Rails.application.routes.draw do
-  get '*path', to: 'blacklist#index',
-    constraints: lambda { |request| Blacklist.retrieve_ips.include?(request.remote_ip) }
+  get '*path', to: 'restricted_list#index',
+    constraints: lambda { |request| RestrictedList.retrieve_ips.include?(request.remote_ip) }
 end
 ```
 

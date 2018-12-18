@@ -44,14 +44,17 @@ module ActiveJob
       #  end
       def retry_on(*exceptions, wait: 3.seconds, attempts: 5, queue: nil, priority: nil)
         rescue_from(*exceptions) do |error|
-          if executions < attempts
-            logger.error "Retrying #{self.class} in #{wait} seconds, due to a #{error.class}. The original exception was #{error.cause.inspect}."
-            retry_job wait: determine_delay(wait), queue: queue, priority: priority
+          exception_executions[exceptions.to_s] += 1
+
+          if exception_executions[exceptions.to_s] < attempts
+            retry_job wait: determine_delay(wait), queue: queue, priority: priority, error: error
           else
             if block_given?
-              yield self, error
+              instrument :retry_stopped, error: error do
+                yield self, error
+              end
             else
-              logger.error "Stopped retrying #{self.class} due to a #{error.class}, which reoccurred on #{executions} attempts. The original exception was #{error.cause.inspect}."
+              instrument :retry_stopped, error: error
               raise error
             end
           end
@@ -78,10 +81,8 @@ module ActiveJob
       #  end
       def discard_on(*exceptions)
         rescue_from(*exceptions) do |error|
-          if block_given?
-            yield self, error
-          else
-            logger.error "Discarded #{self.class} due to a #{error.class}. The original exception was #{error.cause.inspect}."
+          instrument :discard, error: error do
+            yield self, error if block_given?
           end
         end
       end
@@ -109,7 +110,9 @@ module ActiveJob
     #    end
     #  end
     def retry_job(options = {})
-      enqueue options
+      instrument :enqueue_retry, options.slice(:error, :wait) do
+        enqueue options
+      end
     end
 
     private
@@ -129,6 +132,12 @@ module ActiveJob
         else
           raise "Couldn't determine a delay based on #{seconds_or_duration_or_algorithm.inspect}"
         end
+      end
+
+      def instrument(name, error: nil, wait: nil, &block)
+        payload = { job: self, adapter: self.class.queue_adapter, error: error, wait: wait }
+
+        ActiveSupport::Notifications.instrument("#{name}.active_job", payload, &block)
       end
   end
 end

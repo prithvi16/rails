@@ -33,8 +33,6 @@ module Rails
       rails: {
         actions: "-a",
         orm: "-o",
-        javascripts: "-j",
-        javascript_engine: "-je",
         resource_controller: "-c",
         scaffold_controller: "-c",
         stylesheets: "-y",
@@ -56,8 +54,6 @@ module Rails
         force_plural: false,
         helper: true,
         integration_tool: nil,
-        javascripts: true,
-        javascript_engine: :js,
         orm: false,
         resource_controller: :controller,
         resource_route: true,

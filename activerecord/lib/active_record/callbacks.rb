@@ -95,7 +95,7 @@ module ActiveRecord
   #
   #     private
   #       def delete_parents
-  #         self.class.delete_all "parent_id = #{id}"
+  #         self.class.where(parent_id: id).delete_all
   #       end
   #   end
   #
@@ -318,7 +318,7 @@ module ActiveRecord
       _run_touch_callbacks { super }
     end
 
-    def increment!(*, touch: nil) # :nodoc:
+    def increment!(attribute, by = 1, touch: nil) # :nodoc:
       touch ? _run_touch_callbacks { super } : super
     end
 

@@ -2,6 +2,7 @@
 
 require "service/shared_service_tests"
 require "net/http"
+require "database/setup"
 
 if SERVICE_CONFIGURATIONS[:s3]
   class ActiveStorage::Service::S3ServiceTest < ActiveSupport::TestCase
@@ -29,6 +30,13 @@ if SERVICE_CONFIGURATIONS[:s3]
       ensure
         @service.delete key
       end
+    end
+
+    test "upload a zero byte file" do
+      blob = directly_upload_file_blob filename: "empty_file.txt", content_type: nil
+      user = User.create! name: "DHH", avatar: blob
+
+      assert_equal user.avatar.blob, blob
     end
 
     test "signed URL generation" do

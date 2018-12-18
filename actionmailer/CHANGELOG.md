@@ -1,3 +1,29 @@
+*   Add `MailDeliveryJob` for delivering both regular and parameterized mail. Deprecate using `DeliveryJob` and `Parameterized::DeliveryJob`.
+
+    *Gannon McGibbon*
+
+*   Fix ActionMailer assertions not working when a Mail defines
+    a custom delivery job class
+
+    *Edouard Chin*
+
+*   Mails with multipart `format` blocks with implicit render now also check for
+    a template name in options hash instead of only using the action name.
+
+    *Marcus Ilgner*
+
+*   `ActionDispatch::IntegrationTest` includes `ActionMailer::TestHelper` module by default.
+
+    *Ricardo Díaz*
+
+*   Add `perform_deliveries` to a payload of `deliver.action_mailer` notification.
+
+    *Yoshiyuki Kinjo*
+
+*   Change delivery logging message when `perform_deliveries` is false.
+
+    *Yoshiyuki Kinjo*
+
 *   Allow call `assert_enqueued_email_with` with no block.
 
     Example:

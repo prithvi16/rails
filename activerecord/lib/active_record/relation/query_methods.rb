@@ -909,20 +909,17 @@ module ActiveRecord
       @arel ||= build_arel(aliases)
     end
 
-    # Returns a relation value with a given name
-    def get_value(name) # :nodoc:
-      @values.fetch(name, DEFAULT_VALUES[name])
-    end
-
-    protected
+    private
+      # Returns a relation value with a given name
+      def get_value(name)
+        @values.fetch(name, DEFAULT_VALUES[name])
+      end
 
       # Sets the relation value with the given name
-      def set_value(name, value) # :nodoc:
+      def set_value(name, value)
         assert_mutability!
         @values[name] = value
       end
-
-    private
 
       def assert_mutability!
         raise ImmutableRelation if @loaded
@@ -939,7 +936,7 @@ module ActiveRecord
         arel.having(having_clause.ast) unless having_clause.empty?
         if limit_value
           limit_attribute = ActiveModel::Attribute.with_cast_value(
-            "LIMIT".freeze,
+            "LIMIT",
             connection.sanitize_limit(limit_value),
             Type.default_value,
           )
@@ -947,7 +944,7 @@ module ActiveRecord
         end
         if offset_value
           offset_attribute = ActiveModel::Attribute.with_cast_value(
-            "OFFSET".freeze,
+            "OFFSET",
             offset_value.to_i,
             Type.default_value,
           )
@@ -1133,9 +1130,9 @@ module ActiveRecord
         end
         order_args.flatten!
 
-        @klass.enforce_raw_sql_whitelist(
+        @klass.disallow_raw_sql!(
           order_args.flat_map { |a| a.is_a?(Hash) ? a.keys : a },
-          whitelist: AttributeMethods::ClassMethods::COLUMN_NAME_ORDER_WHITELIST
+          permit: AttributeMethods::ClassMethods::COLUMN_NAME_WITH_ORDER
         )
 
         validate_order_args(order_args)
@@ -1188,8 +1185,9 @@ module ActiveRecord
 
       STRUCTURAL_OR_METHODS = Relation::VALUE_METHODS - [:extending, :where, :having, :unscope, :references]
       def structurally_incompatible_values_for_or(other)
+        values = other.values
         STRUCTURAL_OR_METHODS.reject do |method|
-          get_value(method) == other.get_value(method)
+          get_value(method) == values.fetch(method, DEFAULT_VALUES[method])
         end
       end
 

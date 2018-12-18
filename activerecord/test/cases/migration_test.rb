@@ -87,7 +87,6 @@ class MigrationTest < ActiveRecord::TestCase
 
   def test_migrator_versions
     migrations_path = MIGRATIONS_ROOT + "/valid"
-    old_path = ActiveRecord::Migrator.migrations_paths
     migrator = ActiveRecord::MigrationContext.new(migrations_path)
 
     migrator.up
@@ -100,24 +99,18 @@ class MigrationTest < ActiveRecord::TestCase
 
     ActiveRecord::SchemaMigration.create!(version: 3)
     assert_equal true, migrator.needs_migration?
-  ensure
-    ActiveRecord::MigrationContext.new(old_path)
   end
 
   def test_migration_detection_without_schema_migration_table
     ActiveRecord::Base.connection.drop_table "schema_migrations", if_exists: true
 
     migrations_path = MIGRATIONS_ROOT + "/valid"
-    old_path = ActiveRecord::Migrator.migrations_paths
     migrator = ActiveRecord::MigrationContext.new(migrations_path)
 
     assert_equal true, migrator.needs_migration?
-  ensure
-    ActiveRecord::MigrationContext.new(old_path)
   end
 
   def test_any_migrations
-    old_path = ActiveRecord::Migrator.migrations_paths
     migrator = ActiveRecord::MigrationContext.new(MIGRATIONS_ROOT + "/valid")
 
     assert_predicate migrator, :any_migrations?
@@ -125,8 +118,6 @@ class MigrationTest < ActiveRecord::TestCase
     migrator_empty = ActiveRecord::MigrationContext.new(MIGRATIONS_ROOT + "/empty")
 
     assert_not_predicate migrator_empty, :any_migrations?
-  ensure
-    ActiveRecord::MigrationContext.new(old_path)
   end
 
   def test_migration_version
@@ -134,6 +125,36 @@ class MigrationTest < ActiveRecord::TestCase
     assert_equal 0, migrator.current_version
     migrator.up(20131219224947)
     assert_equal 20131219224947, migrator.current_version
+  end
+
+  def test_create_table_raises_if_already_exists
+    connection = Person.connection
+    connection.create_table :testings, force: true do |t|
+      t.string :foo
+    end
+
+    assert_raise(ActiveRecord::StatementInvalid) do
+      connection.create_table :testings do |t|
+        t.string :foo
+      end
+    end
+  ensure
+    connection.drop_table :testings, if_exists: true
+  end
+
+  def test_create_table_with_if_not_exists_true
+    connection = Person.connection
+    connection.create_table :testings, force: true do |t|
+      t.string :foo
+    end
+
+    assert_nothing_raised do
+      connection.create_table :testings, if_not_exists: true do |t|
+        t.string :foo
+      end
+    end
+  ensure
+    connection.drop_table :testings, if_exists: true
   end
 
   def test_create_table_with_force_true_does_not_drop_nonexisting_table
@@ -393,7 +414,6 @@ class MigrationTest < ActiveRecord::TestCase
   def test_internal_metadata_stores_environment
     current_env     = ActiveRecord::ConnectionHandling::DEFAULT_ENV.call
     migrations_path = MIGRATIONS_ROOT + "/valid"
-    old_path        = ActiveRecord::Migrator.migrations_paths
     migrator = ActiveRecord::MigrationContext.new(migrations_path)
 
     migrator.up
@@ -410,7 +430,6 @@ class MigrationTest < ActiveRecord::TestCase
     migrator.up
     assert_equal new_env, ActiveRecord::InternalMetadata[:environment]
   ensure
-    migrator = ActiveRecord::MigrationContext.new(old_path)
     ENV["RAILS_ENV"] = original_rails_env
     ENV["RACK_ENV"]  = original_rack_env
     migrator.up
@@ -422,16 +441,12 @@ class MigrationTest < ActiveRecord::TestCase
 
     current_env     = ActiveRecord::ConnectionHandling::DEFAULT_ENV.call
     migrations_path = MIGRATIONS_ROOT + "/valid"
-    old_path        = ActiveRecord::Migrator.migrations_paths
 
     current_env = ActiveRecord::ConnectionHandling::DEFAULT_ENV.call
     migrator = ActiveRecord::MigrationContext.new(migrations_path)
     migrator.up
     assert_equal current_env, ActiveRecord::InternalMetadata[:environment]
     assert_equal "bar", ActiveRecord::InternalMetadata[:foo]
-  ensure
-    migrator = ActiveRecord::MigrationContext.new(old_path)
-    migrator.up
   end
 
   def test_proper_table_name_on_migration
@@ -1159,7 +1174,7 @@ class CopyMigrationsTest < ActiveRecord::TestCase
   def test_check_pending_with_stdlib_logger
     old, ActiveRecord::Base.logger = ActiveRecord::Base.logger, ::Logger.new($stdout)
     quietly do
-      assert_nothing_raised { ActiveRecord::Migration::CheckPending.new(Proc.new {}).call({}) }
+      assert_nothing_raised { ActiveRecord::Migration::CheckPending.new(Proc.new { }).call({}) }
     end
   ensure
     ActiveRecord::Base.logger = old

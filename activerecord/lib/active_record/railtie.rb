@@ -88,6 +88,31 @@ module ActiveRecord
       end
     end
 
+    initializer "Check for cache versioning support" do
+      config.after_initialize do |app|
+        ActiveSupport.on_load(:active_record) do
+          if app.config.active_record.cache_versioning && Rails.cache
+            unless Rails.cache.class.try(:supports_cache_versioning?)
+              raise <<-end_error
+
+You're using a cache store that doesn't support native cache versioning.
+Your best option is to upgrade to a newer version of #{Rails.cache.class}
+that supports cache versioning (#{Rails.cache.class}.supports_cache_versioning? #=> true).
+
+Next best, switch to a different cache store that does support cache versioning:
+https://guides.rubyonrails.org/caching_with_rails.html#cache-stores.
+
+To keep using the current cache store, you can turn off cache versioning entirely:
+
+    config.active_record.cache_versioning = false
+
+end_error
+            end
+          end
+        end
+      end
+    end
+
     initializer "active_record.check_schema_cache_dump" do
       if config.active_record.delete(:use_schema_cache_dump)
         config.after_initialize do |app|
@@ -108,6 +133,14 @@ module ActiveRecord
               end
             end
           end
+        end
+      end
+    end
+
+    initializer "active_record.define_attribute_methods" do |app|
+      config.after_initialize do
+        ActiveSupport.on_load(:active_record) do
+          descendants.each(&:define_attribute_methods) if app.config.eager_load
         end
       end
     end
@@ -135,21 +168,7 @@ module ActiveRecord
     initializer "active_record.initialize_database" do
       ActiveSupport.on_load(:active_record) do
         self.configurations = Rails.application.config.database_configuration
-
-        begin
-          establish_connection
-        rescue ActiveRecord::NoDatabaseError
-          warn <<-end_warning
-Oops - You have a database configured, but it doesn't exist yet!
-
-Here's how to get started:
-
-  1. Configure your database in config/database.yml.
-  2. Run `rails db:create` to create the database.
-  3. Run `rails db:setup` to load your database schema.
-end_warning
-          raise
-        end
+        establish_connection
       end
     end
 
@@ -180,9 +199,7 @@ end_warning
     end
 
     initializer "active_record.set_executor_hooks" do
-      ActiveSupport.on_load(:active_record) do
-        ActiveRecord::QueryCache.install_executor_hooks
-      end
+      ActiveRecord::QueryCache.install_executor_hooks
     end
 
     initializer "active_record.add_watchable_files" do |app|
@@ -233,6 +250,12 @@ true by adding the following to your application.rb file:
 MSG
           end
         end
+      end
+    end
+
+    initializer "active_record.set_filter_attributes" do
+      ActiveSupport.on_load(:active_record) do
+        self.filter_attributes += Rails.application.config.filter_parameters
       end
     end
   end

@@ -55,14 +55,20 @@ class QueryCacheTest < ActiveRecord::TestCase
     assert_cache :off
   end
 
-  private def with_temporary_connection_pool
-    old_pool = ActiveRecord::Base.connection_handler.retrieve_connection_pool(ActiveRecord::Base.connection_specification_name)
-    new_pool = ActiveRecord::ConnectionAdapters::ConnectionPool.new ActiveRecord::Base.connection_pool.spec
-    ActiveRecord::Base.connection_handler.send(:owner_to_pool)["primary"] = new_pool
+  def test_query_cache_is_applied_to_connections_in_all_handlers
+    ActiveRecord::Base.connected_to(role: :reading) do
+      ActiveRecord::Base.establish_connection(ActiveRecord::Base.configurations["arunit"])
+    end
 
-    yield
+    mw = middleware { |env|
+      ro_conn = ActiveRecord::Base.connection_handlers[:reading].connection_pool_list.first.connection
+      assert_predicate ActiveRecord::Base.connection, :query_cache_enabled
+      assert_predicate ro_conn, :query_cache_enabled
+    }
+
+    mw.call({})
   ensure
-    ActiveRecord::Base.connection_handler.send(:owner_to_pool)["primary"] = old_pool
+    ActiveRecord::Base.connection_handlers = { writing: ActiveRecord::Base.default_connection_handler }
   end
 
   def test_query_cache_across_threads
@@ -200,7 +206,7 @@ class QueryCacheTest < ActiveRecord::TestCase
       Task.cache do
         assert_queries(2) { Task.find(1); Task.find(2) }
       end
-      assert_queries(0) { Task.find(1); Task.find(1); Task.find(2) }
+      assert_no_queries { Task.find(1); Task.find(1); Task.find(2) }
     end
   end
 
@@ -382,7 +388,7 @@ class QueryCacheTest < ActiveRecord::TestCase
     end
 
     # Check that if the same query is run again, no queries are executed
-    assert_queries(0) do
+    assert_no_queries do
       assert_equal 0, Post.where(title: "test").to_a.count
     end
 
@@ -437,8 +443,9 @@ class QueryCacheTest < ActiveRecord::TestCase
       # Clear places where type information is cached
       Task.reset_column_information
       Task.initialize_find_by_cache
+      Task.define_attribute_methods
 
-      assert_queries(0) do
+      assert_no_queries do
         Task.find(1)
       end
     end
@@ -495,6 +502,17 @@ class QueryCacheTest < ActiveRecord::TestCase
   end
 
   private
+
+    def with_temporary_connection_pool
+      old_pool = ActiveRecord::Base.connection_handler.retrieve_connection_pool(ActiveRecord::Base.connection_specification_name)
+      new_pool = ActiveRecord::ConnectionAdapters::ConnectionPool.new ActiveRecord::Base.connection_pool.spec
+      ActiveRecord::Base.connection_handler.send(:owner_to_pool)["primary"] = new_pool
+
+      yield
+    ensure
+      ActiveRecord::Base.connection_handler.send(:owner_to_pool)["primary"] = old_pool
+    end
+
     def middleware(&app)
       executor = Class.new(ActiveSupport::Executor)
       ActiveRecord::QueryCache.install_executor_hooks executor

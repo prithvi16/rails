@@ -290,6 +290,55 @@ module CacheStoreBehavior
     assert_equal "bar", @cache.read("fu/foo")
   end
 
+  InstanceTest = Struct.new(:name, :id) do
+    def cache_key
+      "#{name}/#{id}"
+    end
+
+    def to_param
+      "hello"
+    end
+  end
+
+  def test_array_with_single_instance_as_cache_key_uses_cache_key_method
+    test_instance_one = InstanceTest.new("test", 1)
+    test_instance_two = InstanceTest.new("test", 2)
+
+    @cache.write([test_instance_one], "one")
+    @cache.write([test_instance_two], "two")
+
+    assert_equal "one", @cache.read([test_instance_one])
+    assert_equal "two", @cache.read([test_instance_two])
+  end
+
+  def test_array_with_multiple_instances_as_cache_key_uses_cache_key_method
+    test_instance_one = InstanceTest.new("test", 1)
+    test_instance_two = InstanceTest.new("test", 2)
+    test_instance_three = InstanceTest.new("test", 3)
+
+    @cache.write([test_instance_one, test_instance_three], "one")
+    @cache.write([test_instance_two, test_instance_three], "two")
+
+    assert_equal "one", @cache.read([test_instance_one, test_instance_three])
+    assert_equal "two", @cache.read([test_instance_two, test_instance_three])
+  end
+
+  def test_format_of_expanded_key_for_single_instance
+    test_instance_one = InstanceTest.new("test", 1)
+
+    expanded_key = @cache.send(:expanded_key, test_instance_one)
+
+    assert_equal expanded_key, test_instance_one.cache_key
+  end
+
+  def test_format_of_expanded_key_for_single_instance_in_array
+    test_instance_one = InstanceTest.new("test", 1)
+
+    expanded_key = @cache.send(:expanded_key, [test_instance_one])
+
+    assert_equal expanded_key, test_instance_one.cache_key
+  end
+
   def test_hash_as_cache_key
     @cache.write({ foo: 1, fu: 2 }, "bar")
     assert_equal "bar", @cache.read("foo=1/fu=2")
@@ -319,7 +368,7 @@ module CacheStoreBehavior
   end
 
   def test_original_store_objects_should_not_be_immutable
-    bar = "bar".dup
+    bar = +"bar"
     @cache.write("foo", bar)
     assert_nothing_raised { bar.gsub!(/.*/, "baz") }
   end
@@ -424,7 +473,7 @@ module CacheStoreBehavior
       @events << ActiveSupport::Notifications::Event.new(*args)
     end
     assert @cache.write(key, "1", raw: true)
-    assert @cache.fetch(key) {}
+    assert @cache.fetch(key) { }
     assert_equal 1, @events.length
     assert_equal "cache_read.active_support", @events[0].name
     assert_equal :fetch, @events[0].payload[:super_operation]
@@ -438,7 +487,7 @@ module CacheStoreBehavior
     ActiveSupport::Notifications.subscribe(/^cache_(.*)\.active_support$/) do |*args|
       @events << ActiveSupport::Notifications::Event.new(*args)
     end
-    assert_not @cache.fetch("bad_key") {}
+    assert_not @cache.fetch("bad_key") { }
     assert_equal 3, @events.length
     assert_equal "cache_read.active_support", @events[0].name
     assert_equal "cache_generate.active_support", @events[1].name

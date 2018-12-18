@@ -112,6 +112,17 @@ module ActiveModel
       @details.merge!(other.details) { |_, ary1, ary2| ary1 + ary2 }
     end
 
+    # Removes all errors except the given keys. Returns a hash containing the removed errors.
+    #
+    #   person.errors.keys                  # => [:name, :age, :gender, :city]
+    #   person.errors.slice!(:age, :gender) # => { :name=>["cannot be nil"], :city=>["cannot be nil"] }
+    #   person.errors.keys                  # => [:age, :gender]
+    def slice!(*keys)
+      keys = keys.map(&:to_sym)
+      @details.slice!(*keys)
+      @messages.slice!(*keys)
+    end
+
     # Clear the error messages.
     #
     #   person.errors.full_messages # => ["name cannot be nil"]
@@ -327,11 +338,11 @@ module ActiveModel
     #  person.errors.added? :name, :too_long                                # => false
     #  person.errors.added? :name, "is too long"                            # => false
     def added?(attribute, message = :invalid, options = {})
+      message = message.call if message.respond_to?(:call)
+
       if message.is_a? Symbol
-        self.details[attribute.to_sym].map { |e| e[:error] }.include? message
+        details[attribute.to_sym].include? normalize_detail(message, options)
       else
-        message = message.call if message.respond_to?(:call)
-        message = normalize_message(attribute, message, options)
         self[attribute].include? message
       end
     end
@@ -379,9 +390,11 @@ module ActiveModel
     # * <tt>errors.format</tt>
     def full_message(attribute, message)
       return message if attribute == :base
+      attribute = attribute.to_s
 
       if self.class.i18n_full_message && @base.class.respond_to?(:i18n_scope)
-        parts = attribute.to_s.split(".")
+        attribute = attribute.remove(/\[\d\]/)
+        parts = attribute.split(".")
         attribute_name = parts.pop
         namespace = parts.join("/") unless parts.empty?
         attributes_scope = "#{@base.class.i18n_scope}.errors.models"
@@ -410,8 +423,9 @@ module ActiveModel
       defaults << :"errors.format"
       defaults << "%{attribute} %{message}"
 
-      attr_name = attribute.to_s.tr(".", "_").humanize
+      attr_name = attribute.tr(".", "_").humanize
       attr_name = @base.class.human_attribute_name(attribute, default: attr_name)
+
       I18n.t(defaults.shift,
         default:  defaults,
         attribute: attr_name,
