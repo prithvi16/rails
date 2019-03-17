@@ -63,9 +63,9 @@ module RailsGuides
       end
 
       def mobi
-        mobi  = "ruby_on_rails_guides_#{@version || @edge[0, 7]}"
-        mobi += ".#{@language}" if @language
-        mobi += ".mobi"
+        mobi = +"ruby_on_rails_guides_#{@version || @edge[0, 7]}"
+        mobi << ".#{@language}" if @language
+        mobi << ".mobi"
       end
 
       def initialize_dirs
@@ -150,8 +150,8 @@ module RailsGuides
         puts "Generating #{guide} as #{output_file}"
         layout = @kindle ? "kindle/layout" : "layout"
 
-        view = ActionView::Base.new(
-          @source_dir,
+        view = ActionView::Base.with_empty_template_cache.with_view_paths(
+          [@source_dir],
           edge:     @edge,
           version:  @version,
           mobi:     "kindle/#{mobi}",

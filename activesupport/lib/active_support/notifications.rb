@@ -67,9 +67,12 @@ module ActiveSupport
   # have a key <tt>:exception</tt> with an array of two elements as value: a string with
   # the name of the exception class, and the exception message.
   # The <tt>:exception_object</tt> key of the payload will have the exception
-  # itself as the value.
+  # itself as the value:
   #
-  # As the previous example depicts, the class <tt>ActiveSupport::Notifications::Event</tt>
+  #   event.payload[:exception]         # => ["ArgumentError", "Invalid value"]
+  #   event.payload[:exception_object]  # => #<ArgumentError: Invalid value>
+  #
+  # As the earlier example depicts, the class <tt>ActiveSupport::Notifications::Event</tt>
   # is able to take the arguments as they come and provide an object-oriented
   # interface to that data.
   #
@@ -149,6 +152,15 @@ module ActiveSupport
   # that this will unsubscribe all subscriptions with the given name:
   #
   #   ActiveSupport::Notifications.unsubscribe("render")
+  #
+  # Subscribers using a regexp or other pattern-matching object will remain subscribed
+  # to all events that match their original pattern, unless those events match a string
+  # passed to `unsubscribe`:
+  #
+  #   subscriber = ActiveSupport::Notifications.subscribe(/render/) { }
+  #   ActiveSupport::Notifications.unsubscribe('render_template.action_view')
+  #   subscriber.matches?('render_template.action_view') # => false
+  #   subscriber.matches?('render_partial.action_view') # => true
   #
   # == Default Queue
   #

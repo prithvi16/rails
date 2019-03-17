@@ -308,7 +308,7 @@ module ActiveRecord
   #   named +column_name+ from the table called +table_name+.
   # * <tt>remove_columns(table_name, *column_names)</tt>: Removes the given
   #   columns from the table definition.
-  # * <tt>remove_foreign_key(from_table, options_or_to_table)</tt>: Removes the
+  # * <tt>remove_foreign_key(from_table, to_table = nil, **options)</tt>: Removes the
   #   given foreign key from the table called +table_name+.
   # * <tt>remove_index(table_name, column: column_names)</tt>: Removes the index
   #   specified by +column_names+.
@@ -1087,10 +1087,6 @@ module ActiveRecord
       migrations.last || NullMigration.new
     end
 
-    def parse_migration_filename(filename) # :nodoc:
-      File.basename(filename).scan(Migration::MigrationFilenameRegexp).first
-    end
-
     def migrations
       migrations = migration_files.map do |file|
         version, name, scope = parse_migration_filename(file)
@@ -1122,11 +1118,6 @@ module ActiveRecord
       (db_list + file_list).sort_by { |_, version, _| version }
     end
 
-    def migration_files
-      paths = Array(migrations_paths)
-      Dir[*paths.flat_map { |path| "#{path}/**/[0-9]*_*.rb" }]
-    end
-
     def current_environment
       ActiveRecord::ConnectionHandling::DEFAULT_ENV.call
     end
@@ -1145,6 +1136,15 @@ module ActiveRecord
     end
 
     private
+      def migration_files
+        paths = Array(migrations_paths)
+        Dir[*paths.flat_map { |path| "#{path}/**/[0-9]*_*.rb" }]
+      end
+
+      def parse_migration_filename(filename)
+        File.basename(filename).scan(Migration::MigrationFilenameRegexp).first
+      end
+
       def move(direction, steps)
         migrator = Migrator.new(direction, migrations)
 
@@ -1168,13 +1168,6 @@ module ActiveRecord
   class Migrator # :nodoc:
     class << self
       attr_accessor :migrations_paths
-
-      def migrations_path=(path)
-        ActiveSupport::Deprecation.warn \
-          "`ActiveRecord::Migrator.migrations_path=` is now deprecated and will be removed in Rails 6.0. " \
-          "You can set the `migrations_paths` on the `connection` instead through the `database.yml`."
-        self.migrations_paths = [path]
-      end
 
       # For cases where a table doesn't exist like loading from schema cache
       def current_version
@@ -1330,7 +1323,7 @@ module ActiveRecord
       def record_version_state_after_migrating(version)
         if down?
           migrated.delete(version)
-          ActiveRecord::SchemaMigration.where(version: version.to_s).delete_all
+          ActiveRecord::SchemaMigration.delete_by(version: version.to_s)
         else
           migrated << version
           ActiveRecord::SchemaMigration.create!(version: version.to_s)

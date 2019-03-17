@@ -208,19 +208,18 @@ module Arel # :nodoc: all
           end
 
           visit_Arel_Nodes_SelectOptions(o, collector)
-
-          collector
         end
 
         def visit_Arel_Nodes_SelectOptions(o, collector)
           collector = maybe_visit o.limit, collector
           collector = maybe_visit o.offset, collector
-          collector = maybe_visit o.lock, collector
+          maybe_visit o.lock, collector
         end
 
         def visit_Arel_Nodes_SelectCore(o, collector)
           collector << "SELECT"
 
+          collector = collect_optimizer_hints(o, collector)
           collector = maybe_visit o.set_quantifier, collector
 
           collect_nodes_for o.projections, collector, SPACE
@@ -236,6 +235,10 @@ module Arel # :nodoc: all
           collect_nodes_for o.windows, collector, WINDOW
 
           collector
+        end
+
+        def visit_Arel_Nodes_OptimizerHints(o, collector)
+          collector << "/*+ #{sanitize_as_sql_comment(o).join(" ")} */"
         end
 
         def collect_nodes_for(nodes, collector, spacer, connector = COMMA)
@@ -578,7 +581,7 @@ module Arel # :nodoc: all
 
         def visit_Arel_Nodes_In(o, collector)
           if Array === o.right && !o.right.empty?
-            o.right.keep_if { |value| boundable?(value) }
+            o.right.delete_if { |value| unboundable?(value) }
           end
 
           if Array === o.right && o.right.empty?
@@ -592,7 +595,7 @@ module Arel # :nodoc: all
 
         def visit_Arel_Nodes_NotIn(o, collector)
           if Array === o.right && !o.right.empty?
-            o.right.keep_if { |value| boundable?(value) }
+            o.right.delete_if { |value| unboundable?(value) }
           end
 
           if Array === o.right && o.right.empty?
@@ -631,6 +634,8 @@ module Arel # :nodoc: all
         def visit_Arel_Nodes_Equality(o, collector)
           right = o.right
 
+          return collector << "1=0" if unboundable?(right)
+
           collector = visit o.left, collector
 
           if right.nil?
@@ -663,6 +668,8 @@ module Arel # :nodoc: all
 
         def visit_Arel_Nodes_NotEqual(o, collector)
           right = o.right
+
+          return collector << "1=1" if unboundable?(right)
 
           collector = visit o.left, collector
 
@@ -797,6 +804,14 @@ module Arel # :nodoc: all
           @connection.quote_column_name(name)
         end
 
+        def sanitize_as_sql_comment(o)
+          o.expr.map { |v| v.gsub(%r{ /\*\+?\s* | \s*\*/ }x, "") }
+        end
+
+        def collect_optimizer_hints(o, collector)
+          maybe_visit o.optimizer_hints, collector
+        end
+
         def maybe_visit(thing, collector)
           return collector unless thing
           collector << " "
@@ -814,8 +829,8 @@ module Arel # :nodoc: all
           }
         end
 
-        def boundable?(value)
-          !value.respond_to?(:boundable?) || value.boundable?
+        def unboundable?(value)
+          value.respond_to?(:unboundable?) && value.unboundable?
         end
 
         def has_join_sources?(o)

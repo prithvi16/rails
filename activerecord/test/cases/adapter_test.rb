@@ -132,19 +132,17 @@ module ActiveRecord
       end
 
       def test_not_specifying_database_name_for_cross_database_selects
-        begin
-          assert_nothing_raised do
-            ActiveRecord::Base.establish_connection(ActiveRecord::Base.configurations["arunit"].except(:database))
+        assert_nothing_raised do
+          ActiveRecord::Base.establish_connection(ActiveRecord::Base.configurations["arunit"].except(:database))
 
-            config = ARTest.connection_config
-            ActiveRecord::Base.connection.execute(
-              "SELECT #{config['arunit']['database']}.pirates.*, #{config['arunit2']['database']}.courses.* " \
-              "FROM #{config['arunit']['database']}.pirates, #{config['arunit2']['database']}.courses"
-            )
-          end
-        ensure
-          ActiveRecord::Base.establish_connection :arunit
+          config = ARTest.connection_config
+          ActiveRecord::Base.connection.execute(
+            "SELECT #{config['arunit']['database']}.pirates.*, #{config['arunit2']['database']}.courses.* " \
+            "FROM #{config['arunit']['database']}.pirates, #{config['arunit2']['database']}.courses"
+          )
         end
+      ensure
+        ActiveRecord::Base.establish_connection :arunit
       end
     end
 
@@ -163,6 +161,16 @@ module ActiveRecord
         remove_method :table_alias_length
         alias_method :table_alias_length, :old_table_alias_length
       end
+    end
+
+    def test_preventing_writes_predicate
+      assert_not_predicate @connection, :preventing_writes?
+
+      @connection.while_preventing_writes do
+        assert_predicate @connection, :preventing_writes?
+      end
+
+      assert_not_predicate @connection, :preventing_writes?
     end
 
     def test_errors_when_an_insert_query_is_called_while_preventing_writes
@@ -340,6 +348,10 @@ module ActiveRecord
       assert_equal "special_db_type", @connection.type_to_sql(:special_db_type)
     end
 
+    def test_supports_foreign_keys_in_create_is_deprecated
+      assert_deprecated { @connection.supports_foreign_keys_in_create? }
+    end
+
     def test_supports_multi_insert_is_deprecated
       assert_deprecated { @connection.supports_multi_insert? }
     end
@@ -440,19 +452,21 @@ module ActiveRecord
   class AdapterTestWithoutTransaction < ActiveRecord::TestCase
     self.use_transactional_tests = false
 
-    class Klass < ActiveRecord::Base
-    end
+    fixtures :posts, :authors, :author_addresses
 
     def setup
-      Klass.establish_connection :arunit
-      @connection = Klass.connection
-    end
-
-    teardown do
-      Klass.remove_connection
+      @connection = ActiveRecord::Base.connection
     end
 
     unless in_memory_db?
+      test "reconnect after a disconnect" do
+        assert_predicate @connection, :active?
+        @connection.disconnect!
+        assert_not_predicate @connection, :active?
+        @connection.reconnect!
+        assert_predicate @connection, :active?
+      end
+
       test "transaction state is reset after a reconnect" do
         @connection.begin_transaction
         assert_predicate @connection, :transaction_open?
@@ -465,7 +479,29 @@ module ActiveRecord
         assert_predicate @connection, :transaction_open?
         @connection.disconnect!
         assert_not_predicate @connection, :transaction_open?
+      ensure
+        @connection.reconnect!
       end
+    end
+
+    def test_truncate
+      assert_operator @connection.query_value("SELECT COUNT(*) FROM posts"), :>, 0
+
+      @connection.truncate("posts")
+
+      assert_equal 0, @connection.query_value("SELECT COUNT(*) FROM posts")
+    end
+
+    def test_truncate_tables
+      assert_operator @connection.query_value("SELECT COUNT(*) FROM posts"), :>, 0
+      assert_operator @connection.query_value("SELECT COUNT(*) FROM authors"), :>, 0
+      assert_operator @connection.query_value("SELECT COUNT(*) FROM author_addresses"), :>, 0
+
+      @connection.truncate_tables("author_addresses", "authors", "posts")
+
+      assert_equal 0, @connection.query_value("SELECT COUNT(*) FROM posts")
+      assert_equal 0, @connection.query_value("SELECT COUNT(*) FROM authors")
+      assert_equal 0, @connection.query_value("SELECT COUNT(*) FROM author_addresses")
     end
 
     # test resetting sequences in odd tables in PostgreSQL

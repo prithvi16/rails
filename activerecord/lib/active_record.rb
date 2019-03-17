@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #--
-# Copyright (c) 2004-2018 David Heinemeier Hansson
+# Copyright (c) 2004-2019 David Heinemeier Hansson
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -74,6 +74,7 @@ module ActiveRecord
   autoload :Translation
   autoload :Validations
   autoload :SecureToken
+  autoload :DatabaseSelector, "active_record/middleware/database_selector"
 
   eager_autoload do
     autoload :ActiveRecordError, "active_record/errors"
@@ -151,6 +152,12 @@ module ActiveRecord
       autoload :Named
       autoload :Default
     end
+  end
+
+  module Middleware
+    extend ActiveSupport::Autoload
+
+    autoload :DatabaseSelector, "active_record/middleware/database_selector"
   end
 
   module Tasks

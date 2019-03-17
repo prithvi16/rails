@@ -1,8 +1,48 @@
+## Rails 6.0.0.beta3 (March 11, 2019) ##
+
+*   No changes.
+
+
+## Rails 6.0.0.beta2 (February 25, 2019) ##
+
+*   ActionView::Template.finalize_compiled_template_methods is deprecated with
+    no replacement.
+
+    *tenderlove*
+
+*   config.action_view.finalize_compiled_template_methods is deprecated with
+    no replacement.
+
+    *tenderlove*
+
+*   Ensure unique DOM IDs for collection inputs with float values.
+    Fixes #34974
+
+    *Mark Edmondson*
+
+
+## Rails 6.0.0.beta1 (January 18, 2019) ##
+
+*   [Rename npm package](https://github.com/rails/rails/pull/34905) from
+    [`rails-ujs`](https://www.npmjs.com/package/rails-ujs) to
+    [`@rails/ujs`](https://www.npmjs.com/package/@rails/ujs).
+
+    *Javan Makhmali*
+
+*   Remove deprecated `image_alt` helper.
+
+    *Rafael Mendonça França*
+
+*   Fix the need of `#protect_against_forgery?` method defined in
+    `ActionView::Base` subclasses. This prevents the use of forms and buttons.
+
+    *Genadi Samokovarov*
+
 *   Fix UJS permanently showing disabled text in a[data-remote][data-disable-with] elements within forms.
-    Fixes #33889
+
+    Fixes #33889.
 
     *Wolfgang Hobmaier*
-
 
 *   Prevent non-primary mouse keys from triggering Rails UJS click handlers.
     Firefox fires click events even if the click was triggered by non-primary mouse keys such as right- or scroll-wheel-clicks.
@@ -12,10 +52,9 @@
     <%= link_to 'Remote', remote_path, class: 'remote', remote: true, data: { type: :json } %>
     ```
 
-    Fixes #34541
+    Fixes #34541.
 
     *Wolfgang Hobmaier*
-
 
 *   Prevent `ActionView::TextHelper#word_wrap` from unexpectedly stripping white space from the _left_ side of lines.
 
@@ -30,10 +69,9 @@
 
     Calling `word_wrap` should not trim the indents on the first and last lines.
 
-    Fixes #34487
+    Fixes #34487.
 
     *Lyle Mullican*
-
 
 *   Add allocations to template rendering instrumentation.
 
@@ -175,9 +213,9 @@
 
     *Rui Onodera*
 
-*   Rails 6 requires Ruby 2.4.1 or newer.
+*   Rails 6 requires Ruby 2.5.0 or newer.
 
-    *Jeremy Daer*
+    *Jeremy Daer*, *Kasper Timm Hansen*
 
 
 Please check [5-2-stable](https://github.com/rails/rails/blob/5-2-stable/actionview/CHANGELOG.md) for previous changes.
